@@ -49,6 +49,7 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 enum STATE {
+  Wait,
   Foward,
   Backward,
   Stop,
@@ -59,7 +60,7 @@ enum STATE {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define PRINT_DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -209,11 +210,16 @@ void Get_VL53L0X(uint16_t *ptr)
     Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
     if (Vl53L0X_Read(ptr))
     {
-      //printf("%d: %d\n", i, *ptr);
       if (*ptr == 20) *ptr = 10000;
+#ifdef PRINT_DEBUG
+      printf("%5d, ", *ptr);
+#endif
       Vl53L0X_Set();
     }
   }
+#ifdef PRINT_DEBUG
+  printf("\n");
+#endif
 }
 /* USER CODE END 0 */
 
@@ -226,11 +232,11 @@ int main(void)
   /* USER CODE BEGIN 1 */
   float target1, target2;
   float speed1, speed2;
-  uint16_t value[6];
+  uint16_t value[6] = {0, 0, 0, 0, 0, 0};
   uint16_t dist, depth;
   long count = 0;
   long pcount = 0;
-  enum STATE state = Stop;
+  enum STATE state = Wait;
   enum STATE next_state = Foward;
   /* USER CODE END 1 */
 
@@ -282,10 +288,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   long count_limit[] = {150, 600, 250, 200, 565, 360, 100, 80, 800};
   int limit = 0;
+  int btn_count = 0;
   while (1)
   {
     switch (state)
     {
+      case Wait:
+        if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
+          btn_count++;
+        else
+          btn_count = 0;
+        if (btn_count > 10)
+          state = Foward;
+        break;
       case Foward:
         if (100 < depth)
         {
@@ -405,11 +420,28 @@ int main(void)
           input_capture2, (int)(duty2));
       #endif
       Get_VL53L0X(value);
+      int j = 0;
+      dist = 1000;
+      depth = 0;
+      for (j = 0; j < 3; j++)
+      {
+        if (depth < value[j])
+          depth = value[j];
+      }
+      for (j = 3; j < 6; j++)
+      {
+        if (dist > value[j])
+          dist = value[j];
+      }
+      /*
       depth = value[2];
       dist = value[5];
+      */
+#ifdef PRINT_DEBUG
       printf("depth = %d mm, dist = %d mm,  state = %d\n", depth, dist, state);
       printf("input_capture1 = %d, input_capture2 = %d\n", input_capture1, input_capture2);
       printf("speed1 = %d, speed2 = %d\n", (long)speed1, (long)speed2);
+#endif
     }
 
     HAL_Delay(10);
