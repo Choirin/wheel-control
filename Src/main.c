@@ -6,7 +6,7 @@
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
-  * USER CODE END. Other portions of this file, whether 
+  * USER CODE END. Other portions of this file, whether
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
@@ -75,7 +75,10 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 TIM_MasterConfigTypeDef sMasterConfig;
@@ -92,11 +95,13 @@ uint8_t vl53l0x_addr[] = {0x50, 0x54, 0x56, 0x58, 0x5A, 0x5C};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void SetPWM(uint32_t channel, unsigned int duty);
 /* USER CODE END PFP */
@@ -258,11 +263,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
   {
@@ -279,9 +286,53 @@ int main(void)
   //HAL_TIM_Base_Start(&htim2);
   setbuf(stdout, NULL);
 
+  printf("start\n");
+
+#define RXBUFFERSIZE 64
+#define TXSTARTMESSAGESIZE 16
+
+  /* Buffer used for transmission */
+  uint8_t aTxStartMessage[] = "hi, osciloscope.";
+  uint8_t aTxStartMessage2[] = "fasdawetgagasdfawetgasd";
+#define DMA_WRITE_PTR ( (RXBUFFERSIZE - huart1.hdmarx->Instance->NDTR) & (RXBUFFERSIZE - 1) )
+
+  printf("%d\n", DMA_WRITE_PTR);
+  /* Buffer used for reception */
+  uint8_t aRxBuffer[RXBUFFERSIZE] = "         ";
+  if(HAL_UART_Receive_DMA(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
+  {
+    /* Transfer error in reception process */
+    Error_Handler();
+  }
+  if(HAL_UART_Transmit_DMA(&huart1, (uint8_t*)aTxStartMessage, TXSTARTMESSAGESIZE)!= HAL_OK)
+  {
+    /* Transfer error in transmission process */
+    Error_Handler();
+  }
+  HAL_Delay(100);
+  printf("%d\n", DMA_WRITE_PTR);
+
+  if(HAL_UART_Receive_DMA(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
+  {
+    /* Transfer error in reception process */
+    Error_Handler();
+  }
+  if(HAL_UART_Transmit_DMA(&huart1, (uint8_t*)aTxStartMessage2, TXSTARTMESSAGESIZE)!= HAL_OK)
+  {
+    /* Transfer error in transmission process */
+    Error_Handler();
+  }
+  HAL_Delay(100);
+  printf("%d\n", DMA_WRITE_PTR);
+  while (HAL_UART_GetState(&huart1) != HAL_UART_STATE_READY)
+  {
+  }
+
+  while(1)
+    HAL_Delay(1000);
+
   Set_VL53L0X_Address();
   Init_VL53L0X();
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -411,7 +462,7 @@ int main(void)
 
     SetSpeed(1, target1, speed1);
     SetSpeed(2, target2, speed2);
-    
+
     if ((pcount++) % 10 == 0)
     {
       #if 0
@@ -458,11 +509,11 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /**Configure the main internal regulator output voltage 
+  /**Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /**Initializes the CPU, AHB and APB busses clocks 
+  /**Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -477,7 +528,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /**Initializes the CPU, AHB and APB busses clocks 
+  /**Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -711,6 +762,42 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+  /* These uart interrupts halt any ongoing transfer if an error occurs, disable them */
+  /* Disable the UART Parity Error Interrupt */
+  __HAL_UART_DISABLE_IT(&huart1, UART_IT_PE);
+  /* Disable the UART Error Interrupt: (Frame error, noise error, overrun error) */
+  __HAL_UART_DISABLE_IT(&huart1, UART_IT_ERR);
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -740,6 +827,24 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+  /* DMA2_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
 
@@ -787,7 +892,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)  
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
  if (htim->Instance==TIM2)
   {
@@ -801,7 +906,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
   }
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)  
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
  if (htim->Instance==TIM2)
   {
@@ -851,7 +956,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
