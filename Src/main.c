@@ -46,23 +46,16 @@
 #include "usart_com.h"
 #include "vl53l0x.h"
 #include "pcal9555a.h"
+#include "wheel_control.h"
+#include "explorer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-enum STATE {
-  Wait,
-  Foward,
-  Backward,
-  Stop,
-  LeftTurn,
-  RightTurn,
-};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define PRINT_DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -79,22 +72,17 @@ TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 TIM_MasterConfigTypeDef sMasterConfig;
 TIM_OC_InitTypeDef sConfigOC;
-
-long input_capture1;
-long input_capture2;
-
-uint8_t emergency = 0;
-
-uint8_t vl53l0x_addr[] = {0x50, 0x54, 0x56, 0x58, 0x5A, 0x5C};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
@@ -102,7 +90,6 @@ static void MX_TIM3_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void SetPWM(uint32_t channel, unsigned int duty);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -117,115 +104,6 @@ PUTCHAR_PROTOTYPE
   HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
   return ch;
 }
-
-
-void SetSpeed(uint8_t num, float target, float speed)
-{
-  static float i[2] = {0, 0};
-  float p;
-  float duty;
-
-  p = target - speed;
-  i[num] = i[num] + p;
-  duty = 4.0 * p + 1.0 * i[num];
-  if (duty < -999)
-  {
-    duty = -999;
-  }
-  else if (999 < duty)
-  {
-    duty = 999;
-  }
-  if (emergency == 1)
-  {
-    i[num] = 0;
-    duty = 0;
-  }
-
-  if (num == 1)
-  {
-    if (duty < 0)
-    {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, SET);
-      duty = -duty;
-    }
-    else
-    {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_11, RESET);
-    }
-    SetPWM(TIM_CHANNEL_2, (int)duty);
-  }
-  else
-  {
-    if (duty < 0)
-    {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, SET);
-      duty = -duty;
-    }
-    else
-    {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, RESET);
-    }
-    SetPWM(TIM_CHANNEL_1, (int)duty);
-  }
-}
-
-void SetEmergencyStop(uint8_t emergency_)
-{
-  emergency = emergency_;
-}
-
-void Set_VL53L0X_Address(void)
-{
-  int i;
-  uint8_t port[] = {0, 1, 2, 4, 5, 6};
-
-  PCAL9555A_init();
-  HAL_Delay(10);
-
-  for (i = 0; i < 6; i++)
-  {
-    PCAL9555A_enable(port[i], 1);
-    HAL_Delay(10);
-    Vl53L0X_SetDeviceAddress(0x52);
-    write_byte_data_at(0x8A, (0x7F & (vl53l0x_addr[i] >> 1)));
-    HAL_Delay(10);
-  }
-
-  HAL_Delay(100);
-}
-
-void Init_VL53L0X(void)
-{
-  int i;
-  for (i = 0; i < 6; i++)
-  {
-    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
-    VL53L0X_Address_Test();
-    Vl53L0X_Test();
-    Vl53L0X_Set();
-  }
-}
-
-void Get_VL53L0X(uint16_t *ptr)
-{
-  int i;
-  for (i = 0; i < 6; i++, ptr++)
-  {
-    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
-    if (Vl53L0X_Read(ptr))
-    {
-      if (*ptr == 20) *ptr = 10000;
-#ifdef PRINT_DEBUG
-      printf("%5d, ", *ptr);
-#endif
-      Vl53L0X_Set();
-    }
-  }
-#ifdef PRINT_DEBUG
-  printf("\n");
-#endif
-}
 /* USER CODE END 0 */
 
 /**
@@ -235,14 +113,6 @@ void Get_VL53L0X(uint16_t *ptr)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  float target1, target2;
-  float speed1, speed2;
-  uint16_t value[6] = {0, 0, 0, 0, 0, 0};
-  uint16_t dist, depth;
-  long count = 0;
-  long pcount = 0;
-  enum STATE state = Wait;
-  enum STATE next_state = Foward;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -263,6 +133,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -270,193 +141,49 @@ int main(void)
   MX_I2C1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
-  //HAL_TIM_Base_Start(&htim2);
   setbuf(stdout, NULL);
 
-  printf("start\n");
+  printf("Quickle cleaner robot booted.\n");
 
-  init_usart_com(&huart1);
+  InitializeWheelControl(&htim1, &htim2, &htim3);
+  Set_VL53L0X_Address();
+  Init_VL53L0X();
+
+#if 0
+  InitializeUsartCom(&huart1);
+  sample_loop_back();
+  sample_loop_back();
+  sample_loop_back();
+  sample_loop_back();
   sample_loop_back();
 
   while(1)
     HAL_Delay(1000);
-
-  Set_VL53L0X_Address();
-  Init_VL53L0X();
+#endif
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  long count_limit[] = {150, 600, 250, 200, 565, 360, 100, 80, 800};
-  int limit = 0;
-  int btn_count = 0;
+  int count = 0;
+  uint16_t value[6] = {0, 0, 0, 0, 0, 0};
   while (1)
   {
-    switch (state)
+    float speed[2];
+    float target[2];
+
+    if ((count++) > 10)
     {
-      case Wait:
-        if (GPIO_PIN_RESET == HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13))
-          btn_count++;
-        else
-          btn_count = 0;
-        if (btn_count > 10)
-          state = Foward;
-        break;
-      case Foward:
-        if (100 < depth)
-        {
-          SetEmergencyStop(1);
-          next_state = Backward;
-          state = Stop;
-        }
-        if (dist < 200)
-        {
-          next_state = Backward;
-          state = Stop;
-        }
-        if (count_limit[limit % sizeof(count_limit)] < count)
-        {
-          if (8 < ++limit) limit = 0;
-          next_state = RightTurn;
-          state = Stop;
-        }
-        target1 = 20;
-        target2 = 20;
-        break;
-      case Stop:
-        if (speed1 == 0 && speed2 == 0)
-        {
-          SetEmergencyStop(0);
-          count = 0;
-          if (next_state == Stop)
-            next_state = Foward;
-          state = next_state;
-        }
-        target1 = 0;
-        target2 = 0;
-        break;
-      case Backward:
-        if (200 < dist && depth < 100)
-        {
-          next_state = LeftTurn;
-          state = Stop;
-        }
-        target1 = -10;
-        target2 = -10;
-        break;
-      case LeftTurn:
-        if (100 < depth)
-        {
-          SetEmergencyStop(1);
-          next_state = Backward;
-          state = Stop;
-        }
-        if (100 < count && 400 < dist)
-        {
-          next_state = Foward;
-          state = Stop;
-        }
-        target1 = 10;
-        target2 = -10;
-        break;
-      case RightTurn:
-        if (100 < depth)
-        {
-          SetEmergencyStop(1);
-          next_state = Backward;
-          state = Stop;
-        }
-        if (100 < count && 400 < dist)
-        {
-          next_state = Foward;
-          state = Stop;
-        }
-        target1 = -10;
-        target2 = 10;
-        break;
-      default:
-        state = Foward;
-        break;
+      Get_VL53L0X(value);
+      count = 0;
     }
-    count++;
+    GetCurrentSpeed(speed);
+
+    ExplorerStateControl(speed, target, value + 3, value);
+    SetTargetSpeed(target);
+    MotorControl();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    #if 1
-    if (10000 < input_capture1)
-    {
-      speed1 = 0;
-    }
-    else if (50 < input_capture1)
-    {
-      speed1 = 16000.0 / input_capture1;
-    }
-    if (10000 < input_capture2)
-    {
-      speed2 = 0;
-    }
-    else if (50 < input_capture2)
-    {
-      speed2 = 16000.0 / input_capture2;
-    }
-    #endif
-
-    if (GPIO_PIN_SET == HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_11))
-    {
-      speed1 = -speed1;
-    }
-    if (GPIO_PIN_SET == HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12))
-    {
-      speed2 = -speed2;
-    }
-
-    SetSpeed(1, target1, speed1);
-    SetSpeed(2, target2, speed2);
-
-    if ((pcount++) % 10 == 0)
-    {
-      #if 0
-      printf("%8d, %8d, %8d, %8d\n",
-          input_capture1, (int)(duty1),
-          input_capture2, (int)(duty2));
-      #endif
-      Get_VL53L0X(value);
-      int j = 0;
-      dist = 1000;
-      depth = 0;
-      for (j = 0; j < 3; j++)
-      {
-        if (depth < value[j])
-          depth = value[j];
-      }
-      for (j = 3; j < 6; j++)
-      {
-        if (dist > value[j])
-          dist = value[j];
-      }
-      /*
-      depth = value[2];
-      dist = value[5];
-      */
-#ifdef PRINT_DEBUG
-      printf("depth = %d mm, dist = %d mm,  state = %d\n", depth, dist, state);
-      printf("input_capture1 = %ld, input_capture2 = %ld\n", input_capture1, input_capture2);
-      printf("speed1 = %ld, speed2 = %ld\n", (long)speed1, (long)speed2);
-#endif
-    }
-
     HAL_Delay(10);
   }
   /* USER CODE END 3 */
@@ -471,11 +198,11 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /**Configure the main internal regulator output voltage
+  /**Configure the main internal regulator output voltage 
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /**Initializes the CPU, AHB and APB busses clocks
+  /**Initializes the CPU, AHB and APB busses clocks 
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -490,7 +217,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /**Initializes the CPU, AHB and APB busses clocks
+  /**Initializes the CPU, AHB and APB busses clocks 
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -792,6 +519,21 @@ static void MX_USART2_UART_Init(void)
 
 }
 
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+
+}
+
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -836,47 +578,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
- if (htim->Instance==TIM2)
-  {
-    input_capture1 = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);    //read TIM2 channel 1 capture value
-    __HAL_TIM_SetCounter(&htim2, 0);    //reset counter after input capture interrupt occurs
-  }
- if (htim->Instance==TIM3)
-  {
-    input_capture2 = __HAL_TIM_GetCompare(&htim3, TIM_CHANNEL_1);    //read TIM2 channel 1 capture value
-    __HAL_TIM_SetCounter(&htim3, 0);    //reset counter after input capture interrupt occurs
-  }
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
- if (htim->Instance==TIM2)
-  {
-    input_capture1 = 20000;
-  }
- if (htim->Instance==TIM3)
-  {
-    input_capture2 = 20000;
-  }
-}
-
-void SetPWM(uint32_t channel, unsigned int duty)
-{
-  /*
-  sConfigOC.Pulse = duty;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, channel) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_Start(&htim1, channel) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  */
-  __HAL_TIM_SET_COMPARE(&htim1, channel, duty);
-}
 /* USER CODE END 4 */
 
 /**
@@ -900,7 +601,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{
+{ 
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */

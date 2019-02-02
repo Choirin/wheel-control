@@ -1,6 +1,3 @@
-
-
-/* Includes ------------------------------------------------------------------*/
 #include "usart_com.h"
 
 #include "main.h"
@@ -10,8 +7,10 @@
 
 UART_HandleTypeDef *huart;
 
-uint8_t aTxBuffer[] = " ****UART_TwoBoards_ComIT****  ****UART_TwoBoards_ComIT****  ****UART_TwoBoards_ComIT**** ";
+uint8_t aTxBuffer1[] = " ****UART_TwoBoards_ComIT****  ****UART_TwoBoards_ComIT****  *\n\0";
+uint8_t aTxBuffer2[] = "asdlgasgioasndclamnwietgnaosgjlasdjfkashgiabnsioldfja;lsjclash\n\0";
 uint8_t aRxBuffer[RXBUFFERSIZE];
+uint16_t read_pos = 0;
 
 __IO ITStatus TxReady = RESET;
 __IO ITStatus RxReady = RESET;
@@ -32,33 +31,62 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
 }
 
-void init_usart_com(UART_HandleTypeDef *huart_)
+void InitializeUsartCom(UART_HandleTypeDef *huart_)
 {
   huart = huart_;
+  if(HAL_UART_Receive_DMA(huart, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+uint16_t ReadBuffer(uint8_t *ptr)
+{
+  uint16_t size = 0;
+  uint16_t write_pos = RXBUFFERSIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+  while (write_pos != read_pos)
+  {
+    *(ptr++) = aRxBuffer[read_pos++];
+    read_pos &= (RXBUFFERSIZE - 1);
+    size++;
+  }
+  return size;
 }
 
 void sample_loop_back(void)
 {
-  int i;
-  for (i = 0; i < RXBUFFERSIZE; ++i)
-  {
-    aRxBuffer[i] = 0x00;
-  }
+  uint16_t size;
+  uint8_t buffer[RXBUFFERSIZE];
 
-  if(HAL_UART_Transmit_IT(huart, (uint8_t*)aTxBuffer, TXBUFFERSIZE)!= HAL_OK)
+  size = ReadBuffer(buffer);
+  buffer[size] = '\0';
+  printf((char *)buffer);
+
+#if 0
+  while (HAL_UART_GetState(huart) != HAL_UART_STATE_READY)
+  {
+  }
+#endif
+
+  static int toggle = 0;
+  uint8_t *ptr;
+  if (toggle == 0)
+  {
+    ptr = aTxBuffer1;
+    toggle = 1;
+  }
+  else
+  {
+    ptr = aTxBuffer2;
+    toggle = 0;
+  }
+  
+  if(HAL_UART_Transmit_IT(huart, (uint8_t*)ptr, TXBUFFERSIZE)!= HAL_OK)
   {
     Error_Handler();
   }
-
-  if(HAL_UART_Receive_IT(huart, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  while (RxReady != SET)
-  {
-  }
-  RxReady = RESET;
+  while (TxReady == RESET);
+  TxReady = RESET;
 
   printf((char *)aRxBuffer);
 

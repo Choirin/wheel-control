@@ -20,3 +20,6 @@ void Vl53L0X_Test(void);
 void Vl53L0X_Set(void);
 uint16_t Vl53L0X_Read(uint16_t *pdist);
 uint8_t VL53L0X_Address_Test(void);
+void Set_VL53L0X_Address(void);
+void Init_VL53L0X(void);
+void Get_VL53L0X(uint16_t *ptr);

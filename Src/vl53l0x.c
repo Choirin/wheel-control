@@ -1,8 +1,12 @@
 #include "vl53l0x.h"
+#include "pcal9555a.h"
+#define PRINT_DEBUG
 
 I2C_HandleTypeDef hi2c1;
 uint8_t buf[16];
 uint8_t addr = VL53L0X_Address;
+
+uint8_t vl53l0x_addr[] = {0x50, 0x54, 0x56, 0x58, 0x5A, 0x5C};
 
 void Vl53L0X_SetDeviceAddress(uint8_t addr_)
 {
@@ -109,4 +113,56 @@ uint8_t VL53L0X_Address_Test(void){
     printf("VL53L0X is NOT Found! ERROR! \n");
     return 0;
   }
+}
+
+void Set_VL53L0X_Address(void)
+{
+  int i;
+  uint8_t port[] = {0, 1, 2, 4, 5, 6};
+
+  PCAL9555A_init();
+  HAL_Delay(10);
+
+  for (i = 0; i < 6; i++)
+  {
+    PCAL9555A_enable(port[i], 1);
+    HAL_Delay(10);
+    Vl53L0X_SetDeviceAddress(0x52);
+    write_byte_data_at(0x8A, (0x7F & (vl53l0x_addr[i] >> 1)));
+    HAL_Delay(10);
+  }
+
+  HAL_Delay(100);
+}
+
+void Init_VL53L0X(void)
+{
+  int i;
+  for (i = 0; i < 6; i++)
+  {
+    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
+    VL53L0X_Address_Test();
+    Vl53L0X_Test();
+    Vl53L0X_Set();
+  }
+}
+
+void Get_VL53L0X(uint16_t *ptr)
+{
+  int i;
+  for (i = 0; i < 6; i++, ptr++)
+  {
+    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
+    if (Vl53L0X_Read(ptr))
+    {
+      if (*ptr == 20) *ptr = 10000;
+#ifdef PRINT_DEBUG
+      printf("%5d, ", *ptr);
+#endif
+      Vl53L0X_Set();
+    }
+  }
+#ifdef PRINT_DEBUG
+  printf("\n");
+#endif
 }
