@@ -43,7 +43,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "usart_com.h"
+#include "vl53l0x.h"
+#include "pcal9555a.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -77,8 +79,6 @@ TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
-DMA_HandleTypeDef hdma_usart1_rx;
-DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 TIM_MasterConfigTypeDef sMasterConfig;
@@ -95,7 +95,6 @@ uint8_t vl53l0x_addr[] = {0x50, 0x54, 0x56, 0x58, 0x5A, 0x5C};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
@@ -118,6 +117,7 @@ PUTCHAR_PROTOTYPE
   HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, 0xFFFF);
   return ch;
 }
+
 
 void SetSpeed(uint8_t num, float target, float speed)
 {
@@ -263,7 +263,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
@@ -288,45 +287,8 @@ int main(void)
 
   printf("start\n");
 
-#define RXBUFFERSIZE 64
-#define TXSTARTMESSAGESIZE 16
-
-  /* Buffer used for transmission */
-  uint8_t aTxStartMessage[] = "hi, osciloscope.";
-  uint8_t aTxStartMessage2[] = "fasdawetgagasdfawetgasd";
-#define DMA_WRITE_PTR ( (RXBUFFERSIZE - huart1.hdmarx->Instance->NDTR) & (RXBUFFERSIZE - 1) )
-
-  printf("%d\n", DMA_WRITE_PTR);
-  /* Buffer used for reception */
-  uint8_t aRxBuffer[RXBUFFERSIZE] = "         ";
-  if(HAL_UART_Receive_DMA(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
-  {
-    /* Transfer error in reception process */
-    Error_Handler();
-  }
-  if(HAL_UART_Transmit_DMA(&huart1, (uint8_t*)aTxStartMessage, TXSTARTMESSAGESIZE)!= HAL_OK)
-  {
-    /* Transfer error in transmission process */
-    Error_Handler();
-  }
-  HAL_Delay(100);
-  printf("%d\n", DMA_WRITE_PTR);
-
-  if(HAL_UART_Receive_DMA(&huart1, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
-  {
-    /* Transfer error in reception process */
-    Error_Handler();
-  }
-  if(HAL_UART_Transmit_DMA(&huart1, (uint8_t*)aTxStartMessage2, TXSTARTMESSAGESIZE)!= HAL_OK)
-  {
-    /* Transfer error in transmission process */
-    Error_Handler();
-  }
-  HAL_Delay(100);
-  printf("%d\n", DMA_WRITE_PTR);
-  while (HAL_UART_GetState(&huart1) != HAL_UART_STATE_READY)
-  {
-  }
+  init_usart_com(&huart1);
+  sample_loop_back();
 
   while(1)
     HAL_Delay(1000);
@@ -490,8 +452,8 @@ int main(void)
       */
 #ifdef PRINT_DEBUG
       printf("depth = %d mm, dist = %d mm,  state = %d\n", depth, dist, state);
-      printf("input_capture1 = %d, input_capture2 = %d\n", input_capture1, input_capture2);
-      printf("speed1 = %d, speed2 = %d\n", (long)speed1, (long)speed2);
+      printf("input_capture1 = %ld, input_capture2 = %ld\n", input_capture1, input_capture2);
+      printf("speed1 = %ld, speed2 = %ld\n", (long)speed1, (long)speed2);
 #endif
     }
 
@@ -827,24 +789,6 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-  /* DMA2_Stream7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
 
