@@ -48,6 +48,19 @@ void InitializeUsartCom(UART_HandleTypeDef *huart_)
   read_pos = 0;
 }
 
+
+void UartCom_Send(uint8_t *ptr, uint16_t size)
+{
+#if 0
+  HAL_UART_Transmit(huart, (uint8_t *)&packet, (uint16_t)packet.size, 0xFFFF);
+#else
+  if(HAL_UART_Transmit_IT(huart, ptr, size)!= HAL_OK)
+  {
+    Error_Handler();
+  }
+#endif
+}
+
 uint16_t ReadBuffer(uint8_t *ptr)
 {
   uint16_t size = 0;
@@ -109,16 +122,42 @@ void SendTwistCommand(TWIST twist_command)
   packet->size      = sizeof(PACKET_TWIST_COMMAND);
   packet->twist     = twist_command;
 
-  dump((uint8_t*)&packet, packet->size);
+  //dump((uint8_t*)&packet, packet->size);
 
-#if 0
-  HAL_UART_Transmit(huart, (uint8_t *)&packet, (uint16_t)packet.size, 0xFFFF);
-#else
-  if(HAL_UART_Transmit_IT(huart, (uint8_t*)packet, (uint16_t)packet->size)!= HAL_OK)
-  {
-    Error_Handler();
-  }
-#endif
+  UartCom_Send((uint8_t *)packet, packet->size);
+}
+
+
+void SendSpeed(float *speed)
+{
+  PACKET_SPEED *packet = (PACKET_SPEED *)usart_com_tx_buffer;
+  while (TxReady == RESET);
+  TxReady = RESET;
+
+  packet->marker[0] = MARKER_SPEED_H;
+  packet->marker[1] = MARKER_SPEED_L;
+  packet->size      = sizeof(PACKET_SPEED);
+  packet->speed[0]  = speed[0];
+  packet->speed[1]  = speed[1];
+
+  UartCom_Send((uint8_t *)packet, packet->size);
+}
+
+
+void SendSensor(uint16_t *value)
+{
+  PACKET_SENSOR *packet = (PACKET_SENSOR *)usart_com_tx_buffer;
+  uint16_t i;
+  while (TxReady == RESET);
+  TxReady = RESET;
+
+  packet->marker[0] = MARKER_SENSOR_H;
+  packet->marker[1] = MARKER_SENSOR_L;
+  packet->size      = sizeof(PACKET_SENSOR);
+  for (i = 0; i < 6; ++i)
+    packet->value[i]  = value[i];
+
+  UartCom_Send((uint8_t *)packet, packet->size);
 }
 
 

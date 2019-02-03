@@ -177,18 +177,14 @@ int main(void)
       Get_VL53L0X(value);
       count = 0;
 
-    // loopback test
-    TWIST temp;
-    temp.linear = speed[0];
-    temp.angular = speed[1];
-    SendTwistCommand(temp);
+      SendSpeed(speed);
+      SendSensor(value);
+    }
 
     if (ParseProcess(&twist))
     {
       printf("command: %d, %d\n", (int)twist.linear, (int)twist.angular);
     }
-    }
-
 
     ExplorerStateControl(speed, target, value + 3, value);
     SetTargetSpeed(target);
