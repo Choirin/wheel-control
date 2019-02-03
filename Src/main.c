@@ -145,16 +145,13 @@ int main(void)
 
   printf("Quickle cleaner robot booted.\n");
 
+  InitializeUsartCom(&huart1);
   InitializeWheelControl(&htim1, &htim2, &htim3);
+  InitializeExplorer();
   Set_VL53L0X_Address();
   Init_VL53L0X();
 
 #if 0
-  InitializeUsartCom(&huart1);
-  sample_loop_back();
-  sample_loop_back();
-  sample_loop_back();
-  sample_loop_back();
   sample_loop_back();
 
   while(1)
@@ -170,6 +167,7 @@ int main(void)
   {
     float speed[2];
     float target[2];
+    TWIST twist;
 
     if ((count++) > 10)
     {
@@ -177,6 +175,17 @@ int main(void)
       count = 0;
     }
     GetCurrentSpeed(speed);
+
+    // loopback test
+    TWIST temp;
+    temp.linear = speed[0];
+    temp.angular = speed[1];
+    SendTwistCommand(temp);
+
+    if (ParseProcess(&twist))
+    {
+      printf("command: %d, %d\n", (int)twist.linear, (int)twist.angular);
+    }
 
     ExplorerStateControl(speed, target, value + 3, value);
     SetTargetSpeed(target);

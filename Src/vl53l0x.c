@@ -1,6 +1,5 @@
 #include "vl53l0x.h"
 #include "pcal9555a.h"
-#define PRINT_DEBUG
 
 I2C_HandleTypeDef hi2c1;
 uint8_t buf[16];

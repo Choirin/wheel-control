@@ -13,7 +13,7 @@ enum STATE {
   Wait,
 };
 
-int count_limit[] = {150, 600, 250, 200, 565, 360, 100, 80, 800};
+static const int count_limit[] = {150, 600, 250, 200, 565, 360, 100, 80, 800};
 int limit = 0;
 
 static enum STATE state = Wait;
@@ -22,6 +22,12 @@ static enum STATE next_state = Foward;
 static int count = 0;
 static int print_count = 0;
 static int btn_count = 0;
+
+void InitializeExplorer(void)
+{
+  state = Wait;
+  next_state = Foward;
+}
 
 void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint16_t *depth)
 {

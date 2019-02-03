@@ -1,3 +1,6 @@
+#ifndef __INCLUDE_VL53L0X_H__
+#define __INCLUDE_VL53L0X_H__
+
 #include "stm32f4xx_hal.h"
 
 #define VL53L0X_Address    0x52
@@ -23,3 +26,5 @@ uint8_t VL53L0X_Address_Test(void);
 void Set_VL53L0X_Address(void);
 void Init_VL53L0X(void);
 void Get_VL53L0X(uint16_t *ptr);
+
+#endif

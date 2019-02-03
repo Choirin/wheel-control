@@ -2,18 +2,20 @@
 
 #include "main.h"
 
-#define TXBUFFERSIZE 64
+#define TXBUFFERSIZE 128
 #define RXBUFFERSIZE 64
 
 UART_HandleTypeDef *huart;
 
-uint8_t aTxBuffer1[] = " ****UART_TwoBoards_ComIT****  ****UART_TwoBoards_ComIT****  *\n\0";
-uint8_t aTxBuffer2[] = "asdlgasgioasndclamnwietgnaosgjlasdjfkashgiabnsioldfja;lsjclash\n\0";
-uint8_t aRxBuffer[RXBUFFERSIZE];
-uint16_t read_pos = 0;
+static const uint8_t aTxBuffer[] = "once upon a time, one old programmer lives in a small castle. he writes c program everyday and night. write until 128 chars.  \n\0";
+static const uint16_t block_size = 16;
+static uint16_t tx_pos = 0;
 
-__IO ITStatus TxReady = RESET;
-__IO ITStatus RxReady = RESET;
+uint8_t aRxBuffer[RXBUFFERSIZE];
+static uint16_t read_pos = 0;
+
+__IO ITStatus TxReady = SET;
+__IO ITStatus RxReady = SET;
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle)
 {
@@ -29,6 +31,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 
  void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
+  
 }
 
 void InitializeUsartCom(UART_HandleTypeDef *huart_)
@@ -38,6 +41,9 @@ void InitializeUsartCom(UART_HandleTypeDef *huart_)
   {
     Error_Handler();
   }
+
+  tx_pos = 0;
+  read_pos = 0;
 }
 
 uint16_t ReadBuffer(uint8_t *ptr)
@@ -53,41 +59,66 @@ uint16_t ReadBuffer(uint8_t *ptr)
   return size;
 }
 
+bool ParseProcess(TWIST *twist_command)
+{
+  static uint8_t buffer[RXBUFFERSIZE];
+  static uint16_t buf_pos = 0;
+
+  buf_pos += ReadBuffer(&buffer[buf_pos]);
+  if (buf_pos < 3)
+    return false;
+  if ((buffer[0] == MARKER_COMMAND_TWIST_H) && (buffer[1] == MARKER_COMMAND_TWIST_L))
+  {
+    PACKET_TWIST_COMMAND *packet = (PACKET_TWIST_COMMAND *)buffer;
+    if (packet->size == sizeof(PACKET_TWIST_COMMAND))
+    {
+      *twist_command = packet->twist;
+      return true;
+    }
+  }
+
+  buf_pos = 0;
+  return false;
+}
+
+
+void SendTwistCommand(TWIST twist_command)
+{
+  PACKET_TWIST_COMMAND packet;
+  packet.marker[0] = MARKER_COMMAND_TWIST_H;
+  packet.marker[1] = MARKER_COMMAND_TWIST_L;
+  packet.size      = sizeof(PACKET_TWIST_COMMAND);
+  packet.twist     = twist_command;
+
+  while (TxReady == RESET);
+  TxReady = RESET;
+  if(HAL_UART_Transmit_IT(huart, (uint8_t*)&packet, packet.size)!= HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+
 void sample_loop_back(void)
 {
   uint16_t size;
   uint8_t buffer[RXBUFFERSIZE];
 
+  // Reading
   size = ReadBuffer(buffer);
   buffer[size] = '\0';
+  printf("\na: %d\n", tx_pos);
   printf((char *)buffer);
 
-#if 0
-  while (HAL_UART_GetState(huart) != HAL_UART_STATE_READY)
-  {
-  }
-#endif
-
-  static int toggle = 0;
-  uint8_t *ptr;
-  if (toggle == 0)
-  {
-    ptr = aTxBuffer1;
-    toggle = 1;
-  }
-  else
-  {
-    ptr = aTxBuffer2;
-    toggle = 0;
-  }
-  
-  if(HAL_UART_Transmit_IT(huart, (uint8_t*)ptr, TXBUFFERSIZE)!= HAL_OK)
+  // Sending
+  // Wait last sending
+  while (TxReady == RESET);
+  TxReady = RESET;
+  if(HAL_UART_Transmit_IT(huart, (uint8_t*)&aTxBuffer[tx_pos], block_size)!= HAL_OK)
   {
     Error_Handler();
   }
-  while (TxReady == RESET);
-  TxReady = RESET;
 
-  printf((char *)aRxBuffer);
-
+  tx_pos += block_size;
+  tx_pos &= (TXBUFFERSIZE - 1);
 }
