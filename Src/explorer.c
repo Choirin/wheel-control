@@ -25,6 +25,9 @@ static int btn_count = 0;
 
 void InitializeExplorer(void)
 {
+  count = 0;
+  print_count = 0;
+  btn_count = 0;
   state = Wait;
   next_state = Foward;
 }

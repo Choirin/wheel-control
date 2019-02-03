@@ -1,7 +1,7 @@
 #include "pcal9555a.h"
 
 I2C_HandleTypeDef hi2c1;
-uint8_t buf = 0x00;
+uint8_t buf_ = 0x00;
 
 void PCAL9555A_write_byte_data_at(uint8_t reg, uint8_t data) {
   uint8_t val[1];
@@ -21,10 +21,10 @@ void PCAL9555A_enable(uint8_t port, uint8_t output) {
     }
 
     if (1 == output) {
-        buf |= (0x01 << port);
+        buf_ |= (0x01 << port);
     } else {
-        buf &= ~(0x01 << port);
+        buf_ &= ~(0x01 << port);
     }
 
-    PCAL9555A_write_byte_data_at(PCAL9555A_REG_OUTPUT_PORT_1, buf);
+    PCAL9555A_write_byte_data_at(PCAL9555A_REG_OUTPUT_PORT_1, buf_);
 }

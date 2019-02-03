@@ -143,7 +143,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   setbuf(stdout, NULL);
 
+  printf("\n");
   printf("Quickle cleaner robot booted.\n");
+  printf("\n");
 
   InitializeUsartCom(&huart1);
   InitializeWheelControl(&htim1, &htim2, &htim3);
@@ -169,12 +171,11 @@ int main(void)
     float target[2];
     TWIST twist;
 
+    GetCurrentSpeed(speed);
     if ((count++) > 10)
     {
       Get_VL53L0X(value);
       count = 0;
-    }
-    GetCurrentSpeed(speed);
 
     // loopback test
     TWIST temp;
@@ -186,6 +187,8 @@ int main(void)
     {
       printf("command: %d, %d\n", (int)twist.linear, (int)twist.angular);
     }
+    }
+
 
     ExplorerStateControl(speed, target, value + 3, value);
     SetTargetSpeed(target);
