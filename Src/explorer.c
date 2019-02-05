@@ -2,6 +2,8 @@
 
 #include "wheel_control.h"
 
+#define abs(a)                 ((a) < 0? -(a): (a))
+
 #define PRINT_DEBUG
 
 enum STATE {
@@ -32,6 +34,16 @@ void InitializeExplorer(void)
   next_state = Foward;
 }
 
+void ResetState(void)
+{
+  state = Wait;
+}
+
+bool StateActive(void)
+{
+  return (state != Wait);
+}
+
 void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint16_t *depth)
 {
   uint16_t min_dist, max_depth;
@@ -59,8 +71,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         btn_count = 0;
       if (btn_count > 10)
         state = Foward;
-      target[0] = 0;
-      target[1] = 0;
+      target[0] = 0.0;
+      target[1] = 0.0;
       break;
     case Foward:
       if (100 < max_depth)
@@ -80,11 +92,11 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = RightTurn;
         state = Stop;
       }
-      target[0] = 20;
-      target[1] = 20;
+      target[0] = FOWARD_SPEED;
+      target[1] = FOWARD_SPEED;
       break;
     case Stop:
-      if (speed[0] < 0.1 && speed[1] < 0.1)
+      if (abs(speed[0]) < SPEED_ZERO && abs(speed[1]) < SPEED_ZERO)
       {
         SetEmergencyStop(0);
         count = 0;
@@ -101,8 +113,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = LeftTurn;
         state = Stop;
       }
-      target[0] = -10;
-      target[1] = -10;
+      target[0] = -FOWARD_SPEED / 2;
+      target[1] = -FOWARD_SPEED / 2;
       break;
     case LeftTurn:
       if (100 < max_depth)
@@ -116,8 +128,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = Foward;
         state = Stop;
       }
-      target[0] = 10;
-      target[1] = -10;
+      target[0] = FOWARD_SPEED / 2;
+      target[1] = -FOWARD_SPEED / 2;
       break;
     case RightTurn:
       if (100 < max_depth)
@@ -131,8 +143,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = Foward;
         state = Stop;
       }
-      target[0] = -10;
-      target[1] = 10;
+      target[0] = -FOWARD_SPEED / 2;
+      target[1] = FOWARD_SPEED / 2;
       break;
     default:
       state = Foward;
@@ -145,7 +157,14 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
 #ifdef PRINT_DEBUG
     printf("max_depth = %d mm, min_dist = %d mm,  state = %d, %d\n", max_depth, min_dist, state, count);
     //printf("input_capture1 = %ld, input_capture2 = %ld\n", input_capture1, input_capture2);
-    printf("speed[0] = %ld, speed[1] = %ld\n", (long)speed[0], (long)speed[1]);
+#if 0
+    printf("speed[0] = %d.%03d, speed[1] = %d.%03d\n",
+        (int)speed[0], (int)((speed[0] - (int)speed[0]) * 1000.0),
+        (int)speed[1], (int)((speed[1] - (int)speed[1]) * 1000.0));
+#endif
+    printf("speed[0] = %d, speed[1] = %d\n",
+        (int)(speed[0] * 1000.0),
+        (int)(speed[1] * 1000.0));
 #endif
   }
 }

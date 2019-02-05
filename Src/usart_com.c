@@ -64,7 +64,8 @@ void UartCom_Send(uint8_t *ptr, uint16_t size)
 uint16_t ReadBuffer(uint8_t *ptr)
 {
   uint16_t size = 0;
-  uint16_t write_pos = RXBUFFERSIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+  uint16_t write_pos = (RXBUFFERSIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx)) & (RXBUFFERSIZE - 1);
+  //printf("%d\n", write_pos);
   while (write_pos != read_pos)
   {
     *(ptr++) = aRxBuffer[read_pos++];
@@ -102,6 +103,7 @@ bool ParseProcess(TWIST *twist_command)
     if (packet->size == sizeof(PACKET_TWIST_COMMAND))
     {
       *twist_command = packet->twist;
+      buf_pos = 0;
       return true;
     }
   }

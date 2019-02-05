@@ -12,8 +12,8 @@
 #define TIMER_PERIOD             16000.0
 #define MAX_PWM_DUTY             999
 
-#define PID_P_GAIN               4.0
-#define PID_I_GAIN               1.0
+#define PID_P_GAIN               4000.0
+#define PID_I_GAIN               1000.0
 
 typedef struct{
   GPIO_TypeDef *port;
@@ -76,6 +76,14 @@ float saturate(float a, float limit)
 #endif
 
 
+void SetTwistCommand(TWIST twist)
+{
+  target[0] = twist.linear + twist.angular * MODEL_WHEEL_BASE / 2.0;
+  target[1] = twist.linear - twist.angular * MODEL_WHEEL_BASE / 2.0;
+  //printf("target: %d, %d\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
+}
+
+
 void SetTargetSpeed(float *target_)
 {
   target[0] = target_[0];
@@ -131,14 +139,22 @@ void SetEmergencyStop(uint8_t emergency_)
 void CalculateSpeed(void)
 {
   int i;
+  //printf("%ld\n", input_capture[1]);
   for (i = 0; i < 2; ++i)
   {
     if (MAX_INPUT_CAPTURE < input_capture[i])
       speed[i] = 0.0;
     else if (MIN_INPUT_CAPTURE < input_capture[i])
-      speed[i] = TIMER_PERIOD / input_capture[i];
+    {
+      speed[i] = MODEL_WHEEL_CIRC_LEN * COUNTER_CLOCK_HZ / ENCODER_RESOLUTION / GEAR_RATION / input_capture[i];
+    }
+#if 1
     if (GPIO_PIN_SET == HAL_GPIO_ReadPin(gpio_phase[i].port, gpio_phase[i].pin))
       speed[i] = -speed[i];
+#else
+    if (target[i] < -0.001)
+      speed[i] = -speed[i];
+#endif
   }
 }
 

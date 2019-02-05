@@ -164,6 +164,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int count = 0;
+  uint16_t timeout = 100;
   uint16_t value[6] = {0, 0, 0, 0, 0, 0};
   while (1)
   {
@@ -183,11 +184,22 @@ int main(void)
 
     if (ParseProcess(&twist))
     {
-      printf("command: %d, %d\n", (int)twist.linear, (int)twist.angular);
+      SetTwistCommand(twist);
+      timeout = 100;
+      ResetState();
+      printf("command: %d, %d\n", (int)(twist.linear * 1000.0), (int)(twist.angular * 1000.0));
     }
 
     ExplorerStateControl(speed, target, value + 3, value);
-    SetTargetSpeed(target);
+    if (timeout == 0)
+    {
+      SetTargetSpeed(target);
+    }
+    else
+    {
+      timeout--;
+    }
+    
     MotorControl();
     /* USER CODE END WHILE */
 
@@ -371,9 +383,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0x007F;
+  htim2.Init.Prescaler = 168;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 16000;
+  htim2.Init.Period = 20000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_IC_Init(&htim2) != HAL_OK)
   {
@@ -424,9 +436,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0x007F;
+  htim3.Init.Prescaler = 168;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 16000;
+  htim3.Init.Period = 20000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_IC_Init(&htim3) != HAL_OK)
   {
