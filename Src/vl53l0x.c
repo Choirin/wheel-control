@@ -1,18 +1,11 @@
-#include "stm32f4xx_hal.h"
-
-#define VL53L0X_Address    0x52
-#define VL53L0X_REG_IDENTIFICATION_MODEL_ID         0xc0
-#define VL53L0X_REG_IDENTIFICATION_REVISION_ID      0xc2
-#define VL53L0X_REG_PRE_RANGE_CONFIG_VCSEL_PERIOD   0x50
-#define VL53L0X_REG_FINAL_RANGE_CONFIG_VCSEL_PERIOD 0x70
-#define VL53L0X_REG_SYSRANGE_START                  0x00
-#define VL53L0X_REG_RESULT_INTERRUPT_STATUS         0x13
-#define VL53L0X_REG_RESULT_RANGE_STATUS             0x14
-#define VL53L0X_REG_I2C_SLAVE_DEVICE_ADDRESS        0x8A
+#include "vl53l0x.h"
+#include "pcal9555a.h"
 
 I2C_HandleTypeDef hi2c1;
 uint8_t buf[16];
 uint8_t addr = VL53L0X_Address;
+
+uint8_t vl53l0x_addr[] = {0x50, 0x54, 0x56, 0x58, 0x5A, 0x5C};
 
 void Vl53L0X_SetDeviceAddress(uint8_t addr_)
 {
@@ -75,10 +68,10 @@ void Vl53L0X_Test(void){
   if (val & 0x01) printf("Ready!! \n"); else printf("Not Ready!!");
 
   read_block_data_at(0x14, 12);
-  uint16_t acnt = convuint16(buf[7], buf[6]);
-  uint16_t scnt = convuint16(buf[9], buf[8]);
+  //uint16_t acnt = convuint16(buf[7], buf[6]);
+  //uint16_t scnt = convuint16(buf[9], buf[8]);
   uint16_t dist = convuint16(buf[11], buf[10]);
-  uint8_t DeviceRangeStatusInternal = ((buf[0] & 0x78) >> 3);
+  //uint8_t DeviceRangeStatusInternal = ((buf[0] & 0x78) >> 3);
 
   //printf("ambient count: %d, signal count: %d, distance: %d, status: %d  \n",
   //        acnt,scnt,dist,DeviceRangeStatusInternal);
@@ -86,7 +79,7 @@ void Vl53L0X_Test(void){
 }
 
 void Vl53L0X_Set(void){
-  uint8_t val1 ;
+  //uint8_t val1 ;
   //Init Start
   write_byte_data_at(VL53L0X_REG_SYSRANGE_START, 0x01);
 }
@@ -97,10 +90,10 @@ uint16_t Vl53L0X_Read(uint16_t *pdist){
   if (!(val & 0x01)) return 0;
 
   read_block_data_at(0x14, 12);
-  uint16_t acnt = convuint16(buf[7], buf[6]);
-  uint16_t scnt = convuint16(buf[9], buf[8]);
+  //uint16_t acnt = convuint16(buf[7], buf[6]);
+  //uint16_t scnt = convuint16(buf[9], buf[8]);
   uint16_t dist = convuint16(buf[11], buf[10]);
-  uint8_t DeviceRangeStatusInternal = ((buf[0] & 0x78) >> 3);
+  //uint8_t DeviceRangeStatusInternal = ((buf[0] & 0x78) >> 3);
 
   *pdist = dist;
 
@@ -119,4 +112,56 @@ uint8_t VL53L0X_Address_Test(void){
     printf("VL53L0X is NOT Found! ERROR! \n");
     return 0;
   }
+}
+
+void Set_VL53L0X_Address(void)
+{
+  int i;
+  uint8_t port[] = {0, 1, 2, 4, 5, 6};
+
+  PCAL9555A_init();
+  HAL_Delay(10);
+
+  for (i = 0; i < 6; i++)
+  {
+    PCAL9555A_enable(port[i], 1);
+    HAL_Delay(10);
+    Vl53L0X_SetDeviceAddress(0x52);
+    write_byte_data_at(0x8A, (0x7F & (vl53l0x_addr[i] >> 1)));
+    HAL_Delay(10);
+  }
+
+  HAL_Delay(100);
+}
+
+void Init_VL53L0X(void)
+{
+  int i;
+  for (i = 0; i < 6; i++)
+  {
+    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
+    VL53L0X_Address_Test();
+    Vl53L0X_Test();
+    Vl53L0X_Set();
+  }
+}
+
+void Get_VL53L0X(uint16_t *ptr)
+{
+  int i;
+  for (i = 0; i < 6; i++, ptr++)
+  {
+    Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
+    if (Vl53L0X_Read(ptr))
+    {
+      if (*ptr == 20) *ptr = 10000;
+#ifdef PRINT_DEBUG
+      printf("%5d, ", *ptr);
+#endif
+      Vl53L0X_Set();
+    }
+  }
+#ifdef PRINT_DEBUG
+  printf("\n");
+#endif
 }
