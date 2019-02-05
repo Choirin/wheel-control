@@ -62,6 +62,15 @@ void InitializeWheelControl(TIM_HandleTypeDef *htim_pwm_, TIM_HandleTypeDef *hti
   HAL_TIM_IC_Start_IT(htim_ic[0], TIM_CHANNEL_1);
   HAL_TIM_Base_Start_IT(htim_ic[1]);
   HAL_TIM_IC_Start_IT(htim_ic[1], TIM_CHANNEL_1);
+
+  HAL_TIM_Encoder_Start(htim_ic[0],TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(htim_ic[1],TIM_CHANNEL_ALL);
+
+  while (1)
+  {
+    printf("%ld, %ld", htim_ic[0]->Instance->CNT, htim_ic[1]->Instance->CNT);
+    HAL_Delay(100);
+  }
 }
 
 #if 0
