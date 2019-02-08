@@ -15,7 +15,7 @@ enum STATE {
   Wait,
 };
 
-static const int count_limit[] = {150, 600, 250, 200, 565, 360, 100, 80, 800};
+static const int count_limit[] = {1500, 6000, 2500, 2000, 500, 3600, 1000, 800, 8000};
 int limit = 0;
 
 static enum STATE state = Wait;
@@ -154,7 +154,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
 
   if ((print_count++) % 50 == 0)
   {
-#ifdef PRINT_DEBUG
+#if 0
+//#ifdef PRINT_DEBUG
     printf("max_depth = %d mm, min_dist = %d mm,  state = %d, %d\n", max_depth, min_dist, state, count);
     //printf("input_capture1 = %ld, input_capture2 = %ld\n", input_capture1, input_capture2);
 #if 0
