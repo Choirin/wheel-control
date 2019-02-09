@@ -9,7 +9,7 @@
 
 #define MAX_NUMBER_16BIT         0xFFFF
 #define MAX_INPUT_CAPTURE        0xFFFF
-#define MIN_INPUT_CAPTURE        100
+#define MIN_INPUT_CAPTURE        200
 #define MAX_PWM_DUTY             999
 
 #define PID_P_GAIN               50.0
@@ -82,7 +82,7 @@ void InitializeWheelControl(TIM_HandleTypeDef *htim_pwm_, TIM_HandleTypeDef *hti
   while (1)
   {
     printf("%ld, %ld, %ld, %ld\n", htim_enc[0]->Instance->CNT, htim_enc[1]->Instance->CNT, TIM4->CCR1, TIM5->CCR1);
-    HAL_Delay(100);
+    HAL_Delay(50);
   }
 #endif
 }
@@ -169,7 +169,7 @@ void CalculateSpeed(void)
       speed[i] = 0.0;
     else if (MIN_INPUT_CAPTURE < input_capture[i])
     {
-      speed[i] = MODEL_WHEEL_CIRC_LEN * COUNTER_CLOCK_HZ / ENCODER_RESOLUTION / GEAR_RATION / input_capture[i];
+      speed[i] = MODEL_WHEEL_CIRC_LEN * COUNTER_CLOCK_HZ / ENCODER_1_RESOLUTION / GEAR_RATIO / input_capture[i];
     }
     if (ccw[i])
       speed[i] = -speed[i];
