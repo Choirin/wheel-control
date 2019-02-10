@@ -5,7 +5,7 @@
 
 #include <stdbool.h>
 
-#define FOWARD_SPEED           0.1
+#define FOWARD_SPEED           0.08
 #define SPEED_ZERO             0.0001
 
 void InitializeExplorer(void);
