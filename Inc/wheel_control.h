@@ -23,6 +23,7 @@ typedef struct
 
 void InitializeWheelControl(TIM_HandleTypeDef *htim_pwm_, TIM_HandleTypeDef *htim_enc0_, TIM_HandleTypeDef *htim_enc1_);
 
+bool GetSafety(void);
 void SetEmergencyStop(uint8_t emergency_);
 void SetTwistCommand(TWIST twist);
 void SetTargetSpeed(float *target_);

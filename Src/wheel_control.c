@@ -12,6 +12,9 @@
 #define MIN_INPUT_CAPTURE        200
 #define MAX_PWM_DUTY             999
 
+#define SAFETY_DUTY_TH           600
+#define SAFETY_COUNT_TH          50
+
 #define PID_P_GAIN               50.0
 #define PID_I_GAIN               100.0
 
@@ -30,6 +33,7 @@ uint32_t timer_channel[2] = {
 };
 
 bool emergency = false;
+bool safety = false;
 
 int32_t upper_count[2];
 uint16_t last_count[2];
@@ -47,7 +51,7 @@ TIM_HandleTypeDef htim5;
 
 
 void CalculateSpeed(void);
-void CalculatePID(uint8_t num);
+uint16_t CalculatePID(uint8_t num);
 void SetPWM(uint32_t channel, unsigned int duty);
 
 void InitializeWheelControl(TIM_HandleTypeDef *htim_pwm_, TIM_HandleTypeDef *htim_enc0_, TIM_HandleTypeDef *htim_enc1_)
@@ -120,6 +124,11 @@ void GetCurrentSpeed(float *speed_)
   speed_[1] = speed[1];
 }
 
+bool GetSafety(void)
+{
+  return safety;
+}
+
 
 void SetPWM(uint32_t channel, unsigned int duty)
 {
@@ -127,7 +136,25 @@ void SetPWM(uint32_t channel, unsigned int duty)
 }
 
 
-void CalculatePID(uint8_t num)
+bool CheckDuty(uint8_t num, unsigned int duty)
+{
+  static uint16_t count[2] = {0, 0};
+  if (duty < SAFETY_DUTY_TH)
+  {
+    count[num] = 0;
+  }
+  else if (count[num] > SAFETY_COUNT_TH)
+  {
+    safety = true;
+    return true;
+  }
+  count[num]++;
+  safety = false;
+  return false;
+}
+
+
+uint16_t CalculatePID(uint8_t num)
 {
   float p;
   float duty;
@@ -151,7 +178,10 @@ void CalculatePID(uint8_t num)
   {
     HAL_GPIO_WritePin(gpio_phase[num].port, gpio_phase[num].pin, RESET);
   }
-  SetPWM(timer_channel[num], (int)duty);
+  uint16_t duty_ = (uint16_t)duty;
+  CheckDuty(num, duty_);
+  SetPWM(timer_channel[num], duty_);
+  return duty_;
 }
 
 void SetEmergencyStop(uint8_t emergency_)
@@ -188,9 +218,19 @@ void CalculateSpeed(void)
 
 void MotorControl(void)
 {
+  uint16_t duty[2];
   CalculateSpeed();
-  CalculatePID(0);
-  CalculatePID(1);
+  duty[0] = CalculatePID(0);
+  duty[1] = CalculatePID(1);
+
+#ifdef PRINT_DEBUG
+  static int count = 0;
+  if (count++ == 10)
+  {
+    count = 0;
+    printf("%4d, %4d\r\n", duty[0], duty[1]);
+  }
+#endif
 }
 
 

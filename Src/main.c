@@ -155,9 +155,9 @@ int main(void)
 
   InitializeUsartCom(&huart1);
   InitializeWheelControl(&htim1, &htim2, &htim3);
-  InitializeExplorer();
   Set_VL53L0X_Address();
   Init_VL53L0X();
+  InitializeExplorer();
 
 #if 0
   sample_loop_back();

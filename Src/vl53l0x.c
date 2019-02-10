@@ -1,6 +1,8 @@
 #include "vl53l0x.h"
 #include "pcal9555a.h"
 
+//#define PRINT_DEBUG
+
 I2C_HandleTypeDef hi2c1;
 uint8_t buf[16];
 uint8_t addr = VL53L0X_Address;
@@ -154,7 +156,7 @@ void Get_VL53L0X(uint16_t *ptr)
     Vl53L0X_SetDeviceAddress(vl53l0x_addr[i]);
     if (Vl53L0X_Read(ptr))
     {
-      if (*ptr == 20) *ptr = 10000;
+      if (*ptr <= 20) *ptr = 10000;
 #ifdef PRINT_DEBUG
       printf("%5d, ", *ptr);
 #endif
@@ -162,6 +164,6 @@ void Get_VL53L0X(uint16_t *ptr)
     }
   }
 #ifdef PRINT_DEBUG
-  printf("\n");
+  printf("\r\n");
 #endif
 }
