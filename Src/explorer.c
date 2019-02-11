@@ -21,12 +21,6 @@ enum STATE
   Safety,
 };
 
-typedef struct
-{
-  enum STATE   state;
-  uint16_t     duration;
-}MOTION;
-
 static const uint16_t count_limit[] = {1500, 6000, 2500, 2000, 500, 3600, 1000, 800, 8000};
 int limit = 0;
 

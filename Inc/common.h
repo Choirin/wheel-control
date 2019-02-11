@@ -3,4 +3,7 @@
 
 #define PRINT_DEBUG
 
+#define abs(a)                 ((a) < 0? -(a): (a))
+
+
 #endif
