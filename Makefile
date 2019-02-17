@@ -38,6 +38,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 Src/main.c \
 Src/syscalls.c \
+Src/time.c \
 Src/vl53l0x.c \
 Src/pcal9555a.c \
 Src/usart_com.c \

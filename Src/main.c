@@ -43,6 +43,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "time.h"
 #include "usart_com.h"
 #include "vl53l0x.h"
 #include "pcal9555a.h"
@@ -156,6 +157,7 @@ int main(void)
   printf("Quickle cleaner robot booted.\n");
   printf("\n");
 
+  InitializeTime();
   InitializeUsartCom(&huart1);
   InitializeWheelControl(&htim1, &htim2, &htim3);
   Set_VL53L0X_Address();
@@ -213,6 +215,8 @@ int main(void)
     }
     
     MotorControl();
+
+    GetTime();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

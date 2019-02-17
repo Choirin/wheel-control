@@ -49,6 +49,8 @@ TIM_HandleTypeDef *htim_enc[2];
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 
+extern unsigned long int time_uppercount;
+
 
 void CalculateSpeed(void);
 uint16_t CalculatePID(uint8_t num);
@@ -302,12 +304,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
- if (htim->Instance==TIM4)
+  if (htim->Instance==TIM4)
   {
     input_capture[0] = MAX_NUMBER_16BIT;
   }
- if (htim->Instance==TIM5)
+  if (htim->Instance==TIM5)
   {
     input_capture[1] = MAX_NUMBER_16BIT;
+  }
+  if (htim->Instance==TIM9)
+  {
+    time_uppercount++;
   }
 }

@@ -34,6 +34,7 @@ static enum STATE state = Wait;
 static enum STATE next_state = Foward;
 
 static int duration = 1000;
+static int timeout = 10;
 static int print_count = 0;
 static int btn_count = 0;
 
@@ -114,6 +115,7 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         btn_count = 0;
       if (btn_count > 10)
         state = Setup;
+      timeout = 10;
       target[0] = 0.0;
       target[1] = 0.0;
       break;
@@ -167,6 +169,15 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         duration = 100;
         next_state = LeftTurn;
         state = Stop;
+      }
+      if (duration == 0)
+      {
+        duration = 100;
+        timeout--;
+        if (timeout == 0)
+        {
+          state = Wait;
+        }
       }
       target[0] = -FOWARD_SPEED;
       target[1] = -FOWARD_SPEED;
