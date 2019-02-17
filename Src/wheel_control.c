@@ -110,6 +110,16 @@ void SetTwistCommand(TWIST twist)
   //printf("target: %d, %d\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
 }
 
+TWIST GetCurrentTwist(void)
+{
+  TWIST twist;
+  //target[0] = twist.linear + twist.angular * MODEL_WHEEL_BASE / 2.0;
+  //target[1] = twist.linear - twist.angular * MODEL_WHEEL_BASE / 2.0;
+  twist.linear = (speed[0] + speed[1]) / 2.0;
+  twist.angular = (speed[0] - speed[1]) / 2.0 / MODEL_WHEEL_BASE * 2.0;
+  return twist;
+}
+
 
 void SetTargetSpeed(float *target_)
 {

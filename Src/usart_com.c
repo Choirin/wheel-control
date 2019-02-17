@@ -163,6 +163,21 @@ void SendSensor(uint16_t *value)
 }
 
 
+void SendTwist(TWIST twist)
+{
+  PACKET_TWIST *packet = (PACKET_TWIST *)usart_com_tx_buffer;
+  while (TxReady == RESET);
+  TxReady = RESET;
+
+  packet->marker[0] = MARKER_TWIST_H;
+  packet->marker[1] = MARKER_TWIST_L;
+  packet->size      = sizeof(PACKET_TWIST);
+  packet->twist     = twist;
+
+  UartCom_Send((uint8_t *)packet, packet->size);
+}
+
+
 void sample_loop_back(void)
 {
   uint16_t size;

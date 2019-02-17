@@ -174,18 +174,21 @@ int main(void)
   uint16_t value[6] = {0, 0, 0, 0, 0, 0};
   while (1)
   {
+    TWIST twist;
     float speed[2];
     float target[2];
-    TWIST twist;
 
     GetCurrentSpeed(speed);
     if ((count++) > 10)
     {
-      Get_VL53L0X(value);
+      TWIST current_twist;
       count = 0;
+      Get_VL53L0X(value);
+      current_twist = GetCurrentTwist();
 
-      SendSpeed(speed);
+      //SendSpeed(speed);
       SendSensor(value);
+      SendTwist(current_twist);
     }
 
     if (ParseProcess(&twist))

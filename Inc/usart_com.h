@@ -44,6 +44,19 @@ typedef struct{
 }PACKET_SENSOR;
 
 
+#define MARKER_TWIST_H             0xFF
+#define MARKER_TWIST_L             0xAE
+
+typedef struct{
+  uint8_t  marker[2];           //  2 bytes: 0xFF, 0xAE
+  uint8_t  size;                //  1 bytes
+  uint8_t  reserved;            //  1 bytes
+  TWIST    twist;               //  8 bytes
+  uint8_t  sum;                 //  1 bytes
+  uint8_t  reserved2[3];        //  3 bytes
+}PACKET_TWIST;
+
+
 void InitializeUsartCom(UART_HandleTypeDef * huart_);
 bool ParseProcess(TWIST *twist_command);
 void sample_loop_back(void);
@@ -51,5 +64,6 @@ void sample_loop_back(void);
 void SendTwistCommand(TWIST twist_command);
 void SendSpeed(float *speed);
 void SendSensor(uint16_t *value);
+void SendTwist(TWIST twist);
 
 #endif
