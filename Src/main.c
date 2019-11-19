@@ -196,7 +196,7 @@ int main(void)
       SendTwist(current_twist);
     }
 
-    if (ParseProcess(&twist))
+    while (ParseProcess(&twist))
     {
       SetTwistCommand(twist);
       timeout = 100;

@@ -14,7 +14,7 @@ void InitializeTime(void)
 
 void SetTimeRate(unsigned long int msec)
 {
-  rate_msec = msec;
+  // rate_msec = msec;
 }
 
 void GetTime(void)

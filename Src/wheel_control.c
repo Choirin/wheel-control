@@ -172,7 +172,7 @@ uint16_t CalculatePID(uint8_t num)
   float duty;
 
   p = target[num] - speed[num];
-  pid_i[num] = pid_i[num] + p;
+  pid_i[num] = saturate(pid_i[num] + p, 5.0);
   duty = PID_P_GAIN * p + PID_I_GAIN * pid_i[num];
   duty = saturate(duty, MAX_PWM_DUTY);
 
