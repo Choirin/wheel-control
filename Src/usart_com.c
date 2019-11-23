@@ -3,7 +3,7 @@
 #include "main.h"
 
 #define TXBUFFERSIZE 128
-#define RXBUFFERSIZE 64
+#define RXBUFFERSIZE 128
 
 UART_HandleTypeDef *huart;
 
@@ -33,7 +33,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
 
  void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle)
 {
-  
+  if (UartHandle->Instance == huart->Instance)
+  {
+    printf("UART error\r\n");
+    /* Restart DMA RX even if we encountered framing error, etc */
+    if(HAL_UART_Receive_DMA(huart, (uint8_t *)aRxBuffer, RXBUFFERSIZE) != HAL_OK)
+    {
+      Error_Handler();
+    }
+  }
 }
 
 void InitializeUsartCom(UART_HandleTypeDef *huart_)
@@ -65,7 +73,7 @@ uint16_t ReadBuffer(uint8_t *ptr)
 {
   uint16_t size = 0;
   uint16_t write_pos = (RXBUFFERSIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx)) & (RXBUFFERSIZE - 1);
-  //printf("%d\n", write_pos);
+  // printf("%d\r\n", write_pos);
   while (write_pos != read_pos)
   {
     *(ptr++) = aRxBuffer[read_pos++];

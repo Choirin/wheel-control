@@ -16,7 +16,7 @@
 #define SAFETY_COUNT_TH          50
 
 #define PID_P_GAIN               50.0
-#define PID_I_GAIN               100.0
+#define PID_I_GAIN              200.0
 
 typedef struct{
   GPIO_TypeDef *port;
@@ -48,6 +48,8 @@ TIM_HandleTypeDef *htim_pwm;
 TIM_HandleTypeDef *htim_enc[2];
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+
+extern unsigned long int time_uppercount;
 
 
 void CalculateSpeed(void);
@@ -107,7 +109,7 @@ void SetTwistCommand(TWIST twist)
 {
   target[0] = twist.linear + twist.angular * MODEL_WHEEL_BASE / 2.0;
   target[1] = twist.linear - twist.angular * MODEL_WHEEL_BASE / 2.0;
-  //printf("target: %d, %d\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
+  // printf("target: %d, %d\r\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
 }
 
 TWIST GetCurrentTwist(void)
@@ -170,9 +172,17 @@ uint16_t CalculatePID(uint8_t num)
   float duty;
 
   p = target[num] - speed[num];
-  pid_i[num] = pid_i[num] + p;
+  pid_i[num] = saturate(pid_i[num] + p, 10.0);
   duty = PID_P_GAIN * p + PID_I_GAIN * pid_i[num];
   duty = saturate(duty, MAX_PWM_DUTY);
+  static int count = 0;
+  // if (num == 0 && count++ == 10)
+  // {
+  //   count = 0;
+  //   printf("%ld, %ld, %ld, %ld, %ld\r\n",
+  //       (long int)(1000 * target[num]), (long int)(1000 * speed[num]),
+  //       (long int)(1000 * p), (long int)(1000 * pid_i[num]), (long int)duty);
+  // }
 
   if (emergency == true)
   {
@@ -241,6 +251,12 @@ void MotorControl(void)
     printf("%4d, %4d\r\n", duty[0], duty[1]);
   }
 #endif
+  static int count = 0;
+  if (count++ == 10)
+  {
+    count = 0;
+    printf("%ld, %ld\r\n", upper_count[0], htim_enc[0]->Instance->CNT);
+  }
 }
 
 
@@ -302,12 +318,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
- if (htim->Instance==TIM4)
+  if (htim->Instance==TIM4)
   {
     input_capture[0] = MAX_NUMBER_16BIT;
   }
- if (htim->Instance==TIM5)
+  if (htim->Instance==TIM5)
   {
     input_capture[1] = MAX_NUMBER_16BIT;
+  }
+  if (htim->Instance==TIM9)
+  {
+    time_uppercount++;
   }
 }
