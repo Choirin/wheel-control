@@ -201,13 +201,13 @@ int main(void)
       SetTwistCommand(twist);
       timeout = 100;
       ResetState();
-      printf("command: %d, %d\n", (int)(twist.linear * 1000.0), (int)(twist.angular * 1000.0));
+      // printf("command: %d, %d\n", (int)(twist.linear * 1000.0), (int)(twist.angular * 1000.0));
     }
 
-    ExplorerStateControl(speed, target, value + 3, value);
+    // ExplorerStateControl(speed, target, value + 3, value);
     if (timeout == 0)
     {
-      SetTargetSpeed(target);
+      // SetTargetSpeed(target);
     }
     else
     {

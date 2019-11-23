@@ -16,7 +16,7 @@
 #define SAFETY_COUNT_TH          50
 
 #define PID_P_GAIN               50.0
-#define PID_I_GAIN               100.0
+#define PID_I_GAIN              200.0
 
 typedef struct{
   GPIO_TypeDef *port;
@@ -109,7 +109,7 @@ void SetTwistCommand(TWIST twist)
 {
   target[0] = twist.linear + twist.angular * MODEL_WHEEL_BASE / 2.0;
   target[1] = twist.linear - twist.angular * MODEL_WHEEL_BASE / 2.0;
-  //printf("target: %d, %d\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
+  // printf("target: %d, %d\r\n", (int)(target[0] * 1000.0), (int)(target[1] * 1000.0));
 }
 
 TWIST GetCurrentTwist(void)
@@ -172,9 +172,17 @@ uint16_t CalculatePID(uint8_t num)
   float duty;
 
   p = target[num] - speed[num];
-  pid_i[num] = saturate(pid_i[num] + p, 5.0);
+  pid_i[num] = saturate(pid_i[num] + p, 10.0);
   duty = PID_P_GAIN * p + PID_I_GAIN * pid_i[num];
   duty = saturate(duty, MAX_PWM_DUTY);
+  static int count = 0;
+  // if (num == 0 && count++ == 10)
+  // {
+  //   count = 0;
+  //   printf("%ld, %ld, %ld, %ld, %ld\r\n",
+  //       (long int)(1000 * target[num]), (long int)(1000 * speed[num]),
+  //       (long int)(1000 * p), (long int)(1000 * pid_i[num]), (long int)duty);
+  // }
 
   if (emergency == true)
   {
@@ -243,6 +251,12 @@ void MotorControl(void)
     printf("%4d, %4d\r\n", duty[0], duty[1]);
   }
 #endif
+  static int count = 0;
+  if (count++ == 10)
+  {
+    count = 0;
+    printf("%ld, %ld\r\n", upper_count[0], htim_enc[0]->Instance->CNT);
+  }
 }
 
 

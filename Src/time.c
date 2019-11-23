@@ -23,6 +23,6 @@ void GetTime(void)
   unsigned long int nsec = TIM9->CNT;
   nsec = (sec % 10 * 10000 + nsec) * 10000;
   sec = sec / 10;
-  printf("%9lu.%09lu\r\n", sec, nsec);
+  // printf("%9lu.%09lu\r\n", sec, nsec);
   return;
 }
