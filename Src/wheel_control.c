@@ -16,7 +16,10 @@
 #define SAFETY_COUNT_TH          50
 
 #define PID_P_GAIN               50.0
-#define PID_I_GAIN              200.0
+#define PID_I_GAIN               200.0
+
+#define ENABLE_TIMEOUT           50
+#define MINIMUM_TARGET_SPEED     0.005
 
 typedef struct{
   GPIO_TypeDef *port;
@@ -43,6 +46,7 @@ uint32_t input_capture[2] = {0, 0};
 float speed[2];
 float target[2];
 float pid_i[2];
+uint32_t enable_duration[2] = {ENABLE_TIMEOUT, ENABLE_TIMEOUT};
 
 TIM_HandleTypeDef *htim_pwm;
 TIM_HandleTypeDef *htim_enc[2];
@@ -171,6 +175,15 @@ uint16_t CalculatePID(uint8_t num)
   float p;
   float duty;
 
+  if (MINIMUM_TARGET_SPEED < abs(target[num]))
+  {
+    enable_duration[num] = ENABLE_TIMEOUT;
+  }
+  else if (0 < enable_duration[num])
+  {
+    enable_duration[num]--;
+  }
+
   p = target[num] - speed[num];
   pid_i[num] = saturate(pid_i[num] + p, 10.0);
   duty = PID_P_GAIN * p + PID_I_GAIN * pid_i[num];
@@ -184,7 +197,7 @@ uint16_t CalculatePID(uint8_t num)
   //       (long int)(1000 * p), (long int)(1000 * pid_i[num]), (long int)duty);
   // }
 
-  if (emergency == true)
+  if (emergency == true || !enable_duration[num])
   {
     pid_i[num] = 0;
     duty = 0;
