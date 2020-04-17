@@ -190,7 +190,10 @@ $(BUILD_DIR):
 #######################################
 clean:
 	-rm -fR $(BUILD_DIR)
-  
+
+flash: all
+	st-flash --format ihex write $(BUILD_DIR)/$(TARGET).hex
+
 #######################################
 # dependencies
 #######################################

@@ -175,7 +175,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   int count = 0;
-  uint16_t timeout = 100;
+  bool enabled_auto = true;
   uint16_t value[6] = {0, 0, 0, 0, 0, 0};
   while (1)
   {
@@ -199,19 +199,15 @@ int main(void)
     while (ParseProcess(&twist))
     {
       SetTwistCommand(twist);
-      timeout = 100;
+      enabled_auto = false;
       ResetState();
       // printf("command: %d, %d\n", (int)(twist.linear * 1000.0), (int)(twist.angular * 1000.0));
     }
 
-    // ExplorerStateControl(speed, target, value + 3, value);
-    if (timeout == 0)
+    if (enabled_auto)
     {
-      // SetTargetSpeed(target);
-    }
-    else
-    {
-      timeout--;
+      ExplorerStateControl(speed, target, value + 3, value);
+      SetTargetSpeed(target);
     }
     
     MotorControl();

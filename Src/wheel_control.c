@@ -15,8 +15,8 @@
 #define SAFETY_DUTY_TH           600
 #define SAFETY_COUNT_TH          50
 
-#define PID_P_GAIN               50.0
-#define PID_I_GAIN               200.0
+#define PID_P_GAIN               150.0
+#define PID_I_GAIN               220.0
 
 #define ENABLE_TIMEOUT           50
 #define MINIMUM_TARGET_SPEED     0.005
@@ -264,12 +264,14 @@ void MotorControl(void)
     printf("%4d, %4d\r\n", duty[0], duty[1]);
   }
 #endif
+#if 0
   static int count = 0;
   if (count++ == 10)
   {
     count = 0;
     printf("%ld, %ld\r\n", upper_count[0], htim_enc[0]->Instance->CNT);
   }
+#endif
 }
 
 

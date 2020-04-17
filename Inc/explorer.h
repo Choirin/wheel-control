@@ -6,6 +6,8 @@
 #include <stdbool.h>
 
 #define FOWARD_SPEED           0.08
+#define BACKWARD_SPEED         0.06
+#define TURN_WHEEL_SPEED       0.06
 #define SPEED_ZERO             0.0001
 
 void InitializeExplorer(void);

@@ -145,6 +145,7 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
       }
       if (0 == duration)
       {
+        timeout = 10;  // reset timeout
         next_state = RightTurn;
         state = Stop;
       }
@@ -179,8 +180,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
           state = Wait;
         }
       }
-      target[0] = -FOWARD_SPEED;
-      target[1] = -FOWARD_SPEED;
+      target[0] = -BACKWARD_SPEED;
+      target[1] = -BACKWARD_SPEED;
       break;
     case LeftTurn:
       if (CLIFF_THRESHOLD_DEPTH < max_depth)
@@ -194,8 +195,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = Setup;
         state = Stop;
       }
-      target[0] = FOWARD_SPEED;
-      target[1] = -FOWARD_SPEED;
+      target[0] = TURN_WHEEL_SPEED;
+      target[1] = -TURN_WHEEL_SPEED;
       break;
     case RightTurn:
       if (CLIFF_THRESHOLD_DEPTH < max_depth)
@@ -209,8 +210,8 @@ void ExplorerStateControl(float *speed, float *target, uint16_t *distance, uint1
         next_state = Setup;
         state = Stop;
       }
-      target[0] = -FOWARD_SPEED;
-      target[1] = FOWARD_SPEED;
+      target[0] = -TURN_WHEEL_SPEED;
+      target[1] = TURN_WHEEL_SPEED;
       break;
     default:
       state = Setup;
