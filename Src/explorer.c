@@ -4,7 +4,7 @@
 
 #define abs(a)                 ((a) < 0? -(a): (a))
 
-#define CLIFF_THRESHOLD_DEPTH  65
+#define CLIFF_THRESHOLD_DEPTH  75
 #define WALL_THRESHOLD_DIST    200
 
 #define PRINT_DEBUG

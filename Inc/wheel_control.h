@@ -7,9 +7,9 @@
 #define MODEL_WHEEL_RADIUS      0.033
 #define MODEL_WHEEL_CIRC_LEN    (2.0 * M_PI * MODEL_WHEEL_RADIUS)
 #define MODEL_WHEEL_BASE        0.130
-#define ENCODER_4_RESOLUTION    32.0
-#define ENCODER_1_RESOLUTION    8.0
-#define GEAR_RATIO              120.0
+#define ENCODER_4_RESOLUTION    400.0
+#define ENCODER_1_RESOLUTION    100.0
+#define GEAR_RATIO              30.0
 
 #define TIMER_CLOCK_MHZ         84.0
 #define PRESCALER               168.0

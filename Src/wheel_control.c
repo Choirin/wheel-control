@@ -12,7 +12,7 @@
 #define MIN_INPUT_CAPTURE        200
 #define MAX_PWM_DUTY             999
 
-#define SAFETY_DUTY_TH           600
+#define SAFETY_DUTY_TH           900
 #define SAFETY_COUNT_TH          50
 
 #define PID_P_GAIN               150.0
@@ -129,8 +129,8 @@ TWIST GetCurrentTwist(void)
 
 void SetTargetSpeed(float *target_)
 {
-  target[0] = target_[0];
-  target[1] = target_[1];
+  target[0] = -target_[0];
+  target[1] = -target_[1];
 }
 
 
